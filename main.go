@@ -56,6 +56,24 @@ func cmd3(data string) string {
 	}
 	return string(word)
 }
+func cmd4(data string, salt string) string {
+	fileContent, err := os.ReadFile(pripem)
+	if err != nil {
+		fmt.Println("读取错误：", err)
+	}
+	pri := HexToPri(string(fileContent))
+	return Sign(data, pri, salt)
+}
+func cmd5(data string, sign string, salt string) bool {
+	fileContent, err := os.ReadFile(pubpem)
+	if err != nil {
+		fmt.Println("读取错误：", err)
+	}
+	strPub, _ := hex.DecodeString(string(fileContent))
+	basePub := base64.StdEncoding.EncodeToString(strPub)
+	pub := Base64ToPub(basePub)
+	return Verify(data, sign, pub, salt)
+}
 func file_put_contents(fileName string, content string) {
 	var (
 		file *os.File
@@ -103,8 +121,11 @@ func Exists(path string) bool {
 func main() {
 	var opt int
 	var data string
+	var sign string
 	flag.IntVar(&opt, "o", 1, "操作方式")
 	flag.StringVar(&data, "d", "", "数据")
+	flag.StringVar(&sign, "s", "", "签名")
+	salt := "1234567812345678"
 	flag.Parse()
 	switch opt {
 	case 0:
@@ -117,6 +138,10 @@ func main() {
 	case 2:
 		//解密
 		fmt.Println(cmd3(data))
+	case 3:
+		fmt.Println(cmd4(data, salt))
+	case 4:
+		fmt.Println(cmd5(data, sign, salt))
 	default:
 		fmt.Println("参数错误")
 	}
@@ -164,6 +189,25 @@ func HexToPri(priStr string) *sm2.PrivateKey {
 		panic("私钥加载异常")
 	}
 	return pri
+}
+
+func Sign(data string, pri *sm2.PrivateKey, salt string) string {
+	//salt := "1234567812345678"
+	//salt := ""
+	signature, err := sm2.Sign(pri, []byte(salt), []byte(data))
+	if err != nil {
+		panic("签名错误")
+	}
+	// 转 base64
+	sign := base64.StdEncoding.EncodeToString(signature)
+	return sign
+}
+
+func Verify(data, sign string, pub *sm2.PublicKey, salt string) bool {
+	//salt := "1234567812345678"
+	//salt := ""
+	sign1, _ := base64.StdEncoding.DecodeString(sign)
+	return sm2.Verify(pub, []byte(salt), []byte(data), sign1)
 }
 
 // base64公钥转公钥对象
