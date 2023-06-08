@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ZZMarquis/gm/sm2"
+	"github.com/ZZMarquis/gm/sm3"
 	"io"
 	"os"
 	"strings"
@@ -19,10 +20,21 @@ var (
 
 func cmd1() {
 	hexPri, basePub := Generate()
+	fileContent, _ := os.ReadFile(pripem)
+	if len(fileContent) != 0 {
+		fmt.Println("请先清空" + pripem + "文件的内容")
+		return
+	}
+	fileContent2, _ := os.ReadFile(pubpem)
+	if len(fileContent2) != 0 {
+		fmt.Println("请先清空" + pubpem + "文件的内容")
+		return
+	}
 	file_put_contents(pripem, hexPri)
 	binPub, _ := base64.StdEncoding.DecodeString(basePub)
 	strPub := hex.EncodeToString(binPub)
 	file_put_contents(pubpem, strPub)
+	fmt.Printf("重置秘钥对成功")
 }
 func cmd2(data string) string {
 	//读取文件
@@ -73,6 +85,13 @@ func cmd5(data string, sign string, salt string) bool {
 	basePub := base64.StdEncoding.EncodeToString(strPub)
 	pub := Base64ToPub(basePub)
 	return Verify(data, sign, pub, salt)
+}
+func cmd6(data string) string {
+	d := sm3.New()
+	d.Write([]byte(data))
+	hash := d.Sum(nil)
+	hashHex := hex.EncodeToString(hash[:])
+	return hashHex
 }
 func file_put_contents(fileName string, content string) {
 	var (
@@ -131,7 +150,7 @@ func main() {
 	case 0:
 		//重置秘钥
 		cmd1()
-		fmt.Println("秘钥对已重置")
+		//fmt.Println("秘钥对已重置")
 	case 1:
 		//加密
 		fmt.Println(cmd2(data))
@@ -142,6 +161,8 @@ func main() {
 		fmt.Println(cmd4(data, salt))
 	case 4:
 		fmt.Println(cmd5(data, sign, salt))
+	case 5:
+		fmt.Println(cmd6(data))
 	default:
 		fmt.Println("参数错误")
 	}
